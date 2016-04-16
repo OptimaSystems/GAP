@@ -1,0 +1,3 @@
+Target ⎕SE
+Load GAP
+Run ⎕SE.GAP.Init''
