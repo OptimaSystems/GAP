@@ -20,10 +20,10 @@ Fortunately there are plenty of SCM tools available. GAP is a framework for deve
 The framework comes with two files:
 
 1. GAP.dyalog - the framework source
-1. xload.dyapp - a load script that starts the interpreter and initialises the framework
+1. dev.dyapp - a load script that starts the interpreter and initialises the framework
 
 ### Start a new project
-To start a new project, place the 2 files in the root of your project folder and double click the xload.dyapp file. Start writing some code and see it magically appear in the `src/` folder.
+To start a new project, place the 2 files in the root of your project folder and double click the `dev.dyapp` file. Start writing some code and see it magically appear in the `src/` folder.
 
 ### Convert an existing application
-Place the 2 files in the root of your project folder. Copy your existing code from another workspace or load it in with a load script. Call `⎕SE.GAP.Export './src'` and you are done. Happy coding!
+Place the 2 files in the root of your project folder and double click the `dev.dyapp` file to start the interpreter. Copy your existing code from another workspace or load it in with a load script. Call `⎕SE.GAP.Export './src'` and you are done. Happy coding!
