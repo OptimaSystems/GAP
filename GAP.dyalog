@@ -30,18 +30,18 @@
 
       gapFix←{
           (editor event value space name new)←⍵
-           ⎕SE'GAP'≡space new:
-          '#'≢⍬⍴⍕space:(⍺.⍎'on',event) ⍵
+          ⎕SE'GAP'≡space new:
+          '#'≢⍬⍴⍕space:(⍺.⍎'on',event)⍵
           'AfterFix'≡event:
           d←⍺ getSpaceFolder space
-          value write d,'/',(hash new),'.dyalog'
+          value write d,'/',(fsenc new),'.dyalog'
       }
 
       getSpaceFolder←{
       ⍝ ⍵ ←→ target ns
       ⍝ ⍺ ←→ cfg ns
       ⍝ ← path to fs folder
-           ⎕IO←0 ⋄ ⎕ML←1
+          ⎕IO←0 ⋄ ⎕ML←1
           df←⍕⍵
           e←⍵.(⎕IO ⎕ML ⎕WX ⎕CT ⎕PP)
           i←(⊣/⍺.map)⍳⊂df
@@ -49,14 +49,14 @@
           p1 e1←⍺.map[i;1 2]
           r←⍵ fixFolder⍣(e≡e1)⊢p1
           p1⊣⍺.map[i;2]←⊂e
-     }
+      }
 
       addMap←{
       ⍝ ⍵ ←→ (target ns)(disp form)(ns props)
       ⍝ ⍺ ←→ cfg ns
           ns df e←⍵
           p←1↓df
-          p←⊃,/'/',¨hash¨1↓¨('.'=p)⊂p
+          p←⊃,/'/',¨fsenc¨1↓¨('.'=p)⊂p
           p←⍺.src,'/',p
           ⍺.map⍪←df p e
           r←ns fixFolder p
@@ -81,8 +81,8 @@
     ⍝ ⍵ ←→ target fs folder
           fns←⍺.⎕NL-3.1 3.2 4.1 4.2
           0∊⍴fns:0
-          src←⍺.⎕NR¨fns           
-          hn←hash¨fns
+          src←⍺.⎕NR¨fns
+          hn←fsenc¨fns
           r←src write¨(⊂⍵,'/'),¨hn,¨⊂'.dyalog'
           0
       }
@@ -97,7 +97,7 @@
           smask←~tmask←src∊0
           r←Export/tmask⌿⍉↑nsrefs((⊂⍵,'/'),¨nss)
           ~∨/smask:r    ⍝ no scripts found
-          hn←hash¨smask/nss
+          hn←fsenc¨smask/nss
           r←(smask/src)write¨(⊂⍵,'/'),¨hn,¨⊂'.dyalog'
           0
       }
@@ -166,21 +166,22 @@
           r←⍺ fix¨⍵
           ⍵/⍨~r∊0
       }
-      
-      hash←{⎕IO←0                         
-         0=n←2⊥⍵∊⎕A:⍵
-          ⍵,'.',(⎕D,⎕A)⌷⍨⊂n←16⊥⍣¯1⊢n
+
+    cc←{⍺←0 ⋄ ⍺(819⌶)⍵}
+
+      fsenc←{⎕IO←0
+          0=n←2⊥⍵∊⎕A:⍵,'.0'
+          ⍵,'.',(⎕D,⎕A)⌷⍨⊂16⊥⍣¯1⊢n
+      }
+
+      fsdec←{⎕IO←0
+          n b←0 1 cc¨1↓¨('.'=w)⊂w←'.',⍵
+          0=v←16⊥(⎕D,⎕A)⍳b:n
+          m←((≢n)⍴2)⊤v
+          (m/n)←1 cc m/n
+          n
       }
 
     :EndSection ⍝ Tools
 
 :EndNamespace
-
-
-
-
-
-
-
-
-

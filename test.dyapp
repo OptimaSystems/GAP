@@ -1,0 +1,3 @@
+﻿Load GAP
+Load GAP_Tests
+Run GAP_Tests.RunAll ⍬
