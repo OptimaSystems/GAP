@@ -12,13 +12,21 @@
       getCfg←{
           cfg←'./gap.json'
           ⎕NEXISTS cfg:j2a⊃read cfg
+          ⎕←'Initialising new GAP project.'
           c←⎕NS''
-          c.name←'myApp'
-          c.version←'0.0.0'
+          c.name←'MyApp'ask'Project name'
+          c.version←'0.0.0'ask'Version'
+          c.src←'./src'ask'Source folder'
           c.lib←⍬
-          c.src←'./src'
           r←(0 1 a2j c)write cfg
           c
+      }
+
+      ask←{
+          ⎕←⍵,' (',⍺,')'
+          ans←{⍵/⍨~(∧\⌽b)∨∧\b←' '=⍵}⍞
+          0∊⍴ans:⍺
+          ans
       }
 
       setEditorHooks←{
@@ -43,24 +51,20 @@
       ⍝ ← path to fs folder
           ⎕IO←0 ⋄ ⎕ML←1
           df←⍕⍵
-          e←⍵.(⎕IO ⎕ML ⎕WX ⎕CT ⎕PP)
           i←(⊣/⍺.map)⍳⊂df
-          i=≢⍺.map:⍺ addMap ⍵ df e
-          p1 e1←⍺.map[i;1 2]
-          r←⍵ fixFolder⍣(e≡e1)⊢p1
-          p1⊣⍺.map[i;2]←⊂e
+          i=≢⍺.map:⍺ addMap ⍵ df
+          ⍵ fixFolder i⊃⊢/⍺.map
       }
 
       addMap←{
-      ⍝ ⍵ ←→ (target ns)(disp form)(ns props)
+      ⍝ ⍵ ←→ (target ns)(disp form)
       ⍝ ⍺ ←→ cfg ns
-          ns df e←⍵
+          ns df←⍵
           p←1↓df
           p←⊃,/'/',¨fsenc¨1↓¨('.'=p)⊂p
           p←⍺.src,'/',p
-          ⍺.map⍪←df p e
-          r←ns fixFolder p
-          p
+          ⍺.map⍪←df p
+          ns fixFolder p
       }
 
     :EndSection
@@ -95,7 +99,7 @@
           fpns←⍕¨nsrefs←⍺.⍎⍕nss
           src←ss¨nsrefs     ⍝ NOTE: deal with refs to tns
           smask←~tmask←src∊0
-          r←Export/tmask⌿⍉↑nsrefs((⊂⍵,'/'),¨nss)
+          r←Export/tmask⌿⍉↑nsrefs((⊂⍵,'/'),¨fsenc¨nss)
           ~∨/smask:r    ⍝ no scripts found
           hn←fsenc¨smask/nss
           r←(smask/src)write¨(⊂⍵,'/'),¨hn,¨⊂'.dyalog'
@@ -105,12 +109,16 @@
       fixFolder←{
     ⍝ ⍺ ←→ ns ref
     ⍝ ⍵ ←→ target fs folder
-          m←⎕NS''
-          m.(IO ML WX CT PP)←⍺.(⎕IO ⎕ML ⎕WX ⎕CT ⎕PP)
-          m.name←{⍵↓⍨2×1<≢⍵}⍕⍺
           r←3 ⎕MKDIR ⍵
-          r←(a2j m)write ⍵,'/ns.json'
-          0
+          r←⍺ putProps ⍵
+          ⍵
+      }
+
+      putProps←{
+    ⍝ ⍺ ←→ ns ref
+    ⍝ ⍵ ←→ target fs folder
+          p←⍺.{⍵,'←',⍕⍎⍵}¨'⎕CT' '⎕DCT' '⎕DIV' '⎕FR' '⎕IO' '⎕ML' '⎕PP'
+          p write ⍵,'/ns.props'
       }
 
     :EndSection ⍝ Export
@@ -120,19 +128,29 @@
       ⍝ ⍺ ←→ target ns
       ⍝ ⍵ ←→ source fs folder
           ⎕ML←1
-          ⍺←#
-          m←j2a⊃read ⍵,'/ns.json'
-          ns←⍎((⍕⍺),'.',m.name)⎕NS''
-          ns.(⎕IO ⎕ML ⎕WX ⎕CT ⎕PP)←m.(IO ML WX CT PP)
+          ⍺←⍬
+          ns←⍵ getSpace ⍺
+          x←ns getProps ⍵
           d f←{(↓1 2∘.=⊣/⍵)/¨⊂⊢/⍵}ls ⍵
-          1∊x←ns powerFix⍣≡⊢f:∘∘∘
-          map←⍉⍪(⍕ns)⍵ m.(IO ML WX CT PP)
+          ~0∊⍴x←ns powerFix⍣≡⊢f:∘∘∘
+          map←⍉⍪(⍕ns)⍵
           0∊⍴d:map
           map⍪⊃⍪/ns ∇¨d
+      }
+      getProps←{
+      ⍝ ⍺ ←→ target ns
+      ⍝ ⍵ ←→ source fs folder
+          ⍺.⍎¨⊃read(⍵,'/ns.props')1
+      }
+      getSpace←{⎕IO←0
+          ⍵≡⍬:#
+          ns←fsdec 1⊃⎕NPARTS ⍺,'.'
+          ⍎((⍕⍵),'.',ns)⎕NS''
       }
     :EndSection ⍝ Import
 
     :Section Tools
+
     ss←{16::0⋄⎕SRC ⍵}
     j2a←{7159⌶⍵}
     a2j←{⍺←0 ⋄ ⍺(7160⌶)⍵}
@@ -157,7 +175,7 @@
           ⎕ML←1
           src←⊃read ⍵ 1
           11::1
-          ':'=⊃⊃src:0⊣⍺.⎕FIX src
+          ':'=⊃~∘' '⊃src:0⊣⍺.⎕FIX src
           0⊣⍺.⎕FX src
       }
 
@@ -174,8 +192,10 @@
           ⍵,'.',(⎕D,⎕A)⌷⍨⊂16⊥⍣¯1⊢n
       }
 
-      fsdec←{⎕IO←0
-          n b←0 1 cc¨1↓¨('.'=w)⊂w←'.',⍵
+      fsdec←{⎕IO←0 ⋄ ⎕ML←1
+          '.'≡⊃⍵:''
+          n b←0 1 cc¨0 1↓¨1↓⎕NPARTS ⍵
+          0∊⍴b:⍵
           0=v←16⊥(⎕D,⎕A)⍳b:n
           m←((≢n)⍴2)⊤v
           (m/n)←1 cc m/n
