@@ -76,7 +76,31 @@
           ⍺←#
           r←⍺ fixFolder ⍵
           r←⍺ exportNC9 ⍵
+          r←⍺ exportNC33 ⍵
           r←⍺ exportNC34 ⍵
+          r←⍺ exportNC2 ⍵
+          0
+      }
+
+      exportNC2←{
+    ⍝ ⍺ ←→ root ns
+    ⍝ ⍵ ←→ target fs folder
+          nms←⍺.⎕NL-2.1
+          0∊⍴nms:0
+          src←a2ason¨⍺.⍎¨nms
+          hn←fsenc¨nms
+          r←src write¨(⊂⍵,'/'),¨hn,¨⊂'.ason'
+          0
+      }
+
+      exportNC33←{
+          fns←⍺.⎕NL-3.3
+          0∊⍴fns:0
+          src←⍺.⎕OR¨fns
+          dis←↓¨⎕SE.Dyalog.Utils.disp¨⍺.⎕CR¨fns
+          hn←fsenc¨fns
+          r←src writeDerv¨(⊂⍵,'/'),¨hn,¨⊂'.derv'
+          r←dis write¨(⊂⍵,'/'),¨hn,¨⊂'.txt'
           0
       }
 
@@ -147,16 +171,49 @@
           ns←fsdec 1⊃⎕NPARTS ⍺,'.'
           ⍎((⍕⍵),'.',ns)⎕NS''
       }
+      fix←{
+     ⍝ ⍵ ←→ file path
+     ⍝ ⍺ ←→ target ns
+          ⎕ML←1
+          fn ext←1↓⎕NPARTS ⍵
+          11::1
+          name←fsdec fn
+          ext≡'.derv':0⊣⍺ fixDerv ⍵ name
+          src←⊃read ⍵ 1
+          ext≡'.ason':0⊣name ⍺.{⍎⍺,'←⍵'}ason2a⊃src
+          ext≢'.dyalog':0
+          ':'=⊃~∘' '⊃src:0⊣⍺.⎕FIX src
+          0⊣⍺.⎕FX src
+      }
+
+      fixDerv←{
+      ⍝ ⍺ ←→ target ns
+      ⍝ ⍵ ←→ (source file)(name)
+          file name←⍵
+          (⍺.{(⎕FUNTIE t)⊢⎕FREAD 1,⍨t←⍵ ⎕FSTIE 0}file)⍺.{
+              ⍎⍵,'←⍺⍺ ⋄ ⍵' ⋄ ⍺⍺}name
+      }
+
+      powerFix←{
+          0∊⍴⍵:⍵
+          r←⍺ fix¨⍵
+          ⍵/⍨~r∊0
+      }
     :EndSection ⍝ Import
 
     :Section Tools
 
+    cc←{⍺←0 ⋄ ⍺(819⌶)⍵}
     ss←{16::0⋄⎕SRC ⍵}
-    j2a←{7159⌶⍵}
-    a2j←{⍺←0 ⋄ ⍺(7160⌶)⍵}
+    j2a←{⍺←⊢ ⋄ ⍺(7159⌶)⍵}
+    a2j←{⍺←⊢ ⋄ ⍺(7160⌶)⍵}
 
     write←{(⊂⍺)⎕NPUT ⍵ 1}
     read←{⎕NGET ⍵}
+      writeDerv←{
+          x←1 ⎕NDELETE ⍵
+          (⎕FUNTIE t){0}⍺ ⎕FAPPEND⊢t←⍵ ⎕FCREATE 0
+      }
 
       ls←{
           ⎕ML←1
@@ -168,24 +225,6 @@
           ~∨/f←1=⊣/r:r
           r⍪⊃⍪/⍺ ∇¨f/⊢/r
       }
-
-      fix←{
-     ⍝ ⍵ ←→ file path
-     ⍝ ⍺ ←→ target ns
-          ⎕ML←1
-          src←⊃read ⍵ 1
-          11::1
-          ':'=⊃~∘' '⊃src:0⊣⍺.⎕FIX src
-          0⊣⍺.⎕FX src
-      }
-
-      powerFix←{
-          0∊⍴⍵:⍵
-          r←⍺ fix¨⍵
-          ⍵/⍨~r∊0
-      }
-
-    cc←{⍺←0 ⋄ ⍺(819⌶)⍵}
 
       fsenc←{⎕IO←0
           0=n←2⊥⍵∊⎕A:⍵,'.0'
@@ -201,6 +240,39 @@
           (m/n)←1 cc m/n
           n
       }
+
+      a2ason←{⍺←⊢
+          enc←{
+              t←10|⎕DR ⍵
+              t=0:(⍴⍴⍵),(⍴⍵),⊂,⍵
+              t∊1 3 5:(⍴⍴⍵),(⍴⍵),,⍵
+              isns←9.1=⎕NC⊂,'⍵'
+              isns t∧.=0 6:(⍴⍴⍵),(⍴⍵),∇¨,⍵
+              0∊⍴vn←⍵.⎕NL-2:⍵
+              vv←∇¨⍵.⍎¨vn
+              x←vn(ns←⎕NS'').{⍎⍺,'←⍵'}¨vv
+              ns
+          }
+          ⍺ a2j enc ⍵
+      }
+
+      ason2a←{
+          dec←{⎕ML←1
+              9=⎕NC'⍵':ns ⍵
+              r←⊃⍵ ⋄ s←r↑1↓⍵
+              w←(1+r)↓⍵
+              v←s⍴⊃⍣(0=10|⎕DR⊃w)⊢w
+              2>|≡v:v
+              ∇¨v
+          }
+          ns←{
+              0∊⍴vn←⍵.⎕NL-2:⍵
+              vv←dec¨⍵.⍎¨vn
+              ⍵⊣vn ⍵.{⍎⍺,'←⍵'}¨vv
+          }
+          dec j2a ⍵
+      }
+
 
     :EndSection ⍝ Tools
 
