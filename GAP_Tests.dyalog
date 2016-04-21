@@ -73,19 +73,20 @@
           0
       }
       test_a2ason←{
-          r←assert'[0,"1"]'≡#.GAP.a2ason'1'
+          r←assert'"1"'≡#.GAP.a2ason'1'
           r←assert'[1,6,"123456"]'≡#.GAP.a2ason'123456'
           r←assert'[2,2,3,"123456"]'≡#.GAP.a2ason 2 3⍴'123456'
           r←assert'[1,2,[1,3,"123"],[1,4,"4563"]]'≡#.GAP.a2ason'123' '4563'
-          r←assert'[0,1]'≡#.GAP.a2ason 1
+          r←assert(,'1')≡#.GAP.a2ason 1
           r←assert'[1,6,1,2,3,4,5,6]'≡#.GAP.a2ason 1 2 3 4 5 6
           r←assert'[2,2,3,1,2,3,4,5,6]'≡#.GAP.a2ason 2 3⍴1 2 3 4 5 6
           r←assert'[1,2,[1,3,1,2,3],[1,4,4,5,6,3]]'≡#.GAP.a2ason(1 2 3)(4 5 6 3)
           r←assert'{}'≡#.GAP.a2ason ⎕NS''
-          r←assert'{"a":[0,5]}'≡#.GAP.a2ason n⊣(n←⎕NS'').a←5
+          r←assert'{"a":5}'≡#.GAP.a2ason n⊣(n←⎕NS'').a←5
           0
       }
       test_ason2a←{
+          r←assert'1'≡#.GAP.ason2a'"1"'
           r←assert'1'≡#.GAP.ason2a'[0,"1"]'
           r←assert'123456'≡#.GAP.ason2a'[1,6,"123456"]'
           r←assert(2 3⍴'123456')≡#.GAP.ason2a'[2,2,3,"123456"]'
