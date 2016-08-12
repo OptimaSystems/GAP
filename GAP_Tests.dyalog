@@ -83,6 +83,7 @@
           r←assert'[1,2,[1,3,1,2,3],[1,4,4,5,6,3]]'≡#.GAP.a2ason(1 2 3)(4 5 6 3)
           r←assert'{}'≡#.GAP.a2ason ⎕NS''
           r←assert'{"a":5}'≡#.GAP.a2ason n⊣(n←⎕NS'').a←5
+          r←assert'[1,2,{},{}]'≡#.GAP.a2ason ⎕NS¨'' ''
           0
       }
       test_ason2a←{
@@ -102,6 +103,12 @@
           r←assert 9.1=⎕NC⊂'ns'
           r←assert(,⊂,'a')≡ns.⎕NL-⍳9
           r←assert ns.a≡5
+          nsv←#.GAP.ason2a'[1,2,{"id":2},{"id":1}]'
+          r←assert 2.1=⎕NC⊂'nsv'
+          r←assert 2=⍴nsv
+          ns1 ns2←nsv
+          r←assert∧/9.1=⎕NC'ns1' 'ns2'
+          r←assert nsv.id≡2 1
           0
       }
     :EndSection

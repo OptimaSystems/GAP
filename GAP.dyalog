@@ -1,11 +1,15 @@
 :Namespace GAP
+    (⎕IO ⎕ML)←0 1
 
     :Section Initialise
       Init←{
-          c←getCfg ⍬
+          c←⎕THIS.cfg←getCfg ⍬
           r←# fixFolder c.src
-          c.map←Import c.src
+          c.map←⍉⍪'Name' 'Filepath' 'ReadOnly'
+          r←c'#' 0 Import c.src
+          r←ImportLibs c
           r←setEditorHooks c
+          r←setFileWatcher⍣(jt≡c.watch)⊢c.src
           'Loaded "',c.name,'" [',c.version,']'
       }
 
@@ -17,7 +21,8 @@
           c.name←'MyApp'ask'Project name'
           c.version←'0.0.0'ask'Version'
           c.src←'./src'ask'Source folder'
-          c.lib←⍬
+          c.watch←jf jt⊃⍨'yY'∊⍨⊃'y'ask'Watch external file changes'
+          c.libs←⍬
           r←(0 1 a2j c)write cfg
           c
       }
@@ -41,19 +46,49 @@
           ⎕SE'GAP'≡space new:
           '#'≢⍬⍴⍕space:(⍺.⍎'on',event)⍵
           'AfterFix'≡event:
+          1=⍺ checkReadOnly(⍕space),'.',⍕new:
           d←⍺ getSpaceFolder space
           value write d,'/',(fsenc new),'.dyalog'
       }
+      checkReadOnly←{
+      ⍝ ⍺ ←→ cfg space
+      ⍝ ⍵ ←→ name
+      ⍝ ← ←→ 1 = readonly
+          i←(⊣/⍺.map)⍳⊂⍵
+          i=≢⍺.map:0
+          (⊂i 2)⊃⍺.map
+      }
+      setFileWatcher←{
+          0::0
+          ⎕USING←'System.IO,System.dll'
+          fw←⎕THIS.fw←⎕NEW FileSystemWatcher(⊂⍵)
+          fw.(onChanged onCreated onDeleted onRenamed)←⊂⎕OR'OnExternalChange'
+          fw.IncludeSubdirectories←1
+          fw.EnableRaisingEvents←1
+          ⎕←'Watching: ',⍵
+          0
+      }
+
+    ∇ OnExternalChange msg;fw;arg;x;t;ct
+      fw arg←msg
+      ct←arg.ChangeType.ToString ⍬
+      :If ct≡'Changed'
+      :AndIf '.dyalog' '.props' '.derv' '.ason'∊⍨⊂⊃⌽⎕NPARTS arg.FullPath
+          t←1 ⎕NINFO arg.FullPath
+      :AndIf t=2
+          x←(⎕THIS.cfg.src,'/')reload arg.Name
+      :EndIf
+      x←2501⌶0      ⍝ discard this thread on exit
+    ∇
 
       getSpaceFolder←{
       ⍝ ⍵ ←→ target ns
       ⍝ ⍺ ←→ cfg ns
       ⍝ ← path to fs folder
-          ⎕IO←0 ⋄ ⎕ML←1
           df←⍕⍵
           i←(⊣/⍺.map)⍳⊂df
           i=≢⍺.map:⍺ addMap ⍵ df
-          ⍵ fixFolder i⊃⊢/⍺.map
+          ⍵ fixFolder(⊂i 1)⊃⍺.map
       }
 
       addMap←{
@@ -63,7 +98,7 @@
           p←1↓df
           p←⊃,/'/',¨fsenc¨1↓¨('.'=p)⊂p
           p←⍺.src,'/',p
-          ⍺.map⍪←df p
+          ⍺.map⍪←df p 0
           ns fixFolder p
       }
 
@@ -144,48 +179,83 @@
           p←⍺.{⍵,'←',⍕⍎⍵}¨'⎕CT' '⎕DCT' '⎕DIV' '⎕FR' '⎕IO' '⎕ML' '⎕PP'
           p write ⍵,'/ns.props'
       }
-
+      Save←{
+          ns file banner←3↑⍵,⊂''
+          ns2script←{
+              0≢src←{16::0 ⋄ ⎕SRC ⍵}ns←⍺.⍎⍵:src
+              pad←(4⍴' ')∘,
+              fns←pad¨ns.(⊃,/⎕NR¨⎕NL-3.1 3.2 4.1 4.2)
+              nss←pad¨⊃,/ns ∇¨ns.⎕NL-9
+              env←⊂'(⎕IO ⎕ML ⎕WX)←',⍕ns.(⎕IO ⎕ML ⎕WX)
+              (⊂':Namespace ',⍵),env,fns,nss,⊂':EndNamespace'
+          }
+          root name←0 1↓¨1↓⎕NPARTS ns
+          src←(⍎root)ns2script name
+          src←¯1⌽('⍝ '∘,¨banner),1⌽src
+          src write file
+      }
     :EndSection ⍝ Export
 
     :Section Import
       Import←{
-      ⍝ ⍺ ←→ target ns
+      ⍝ ⍺ ←→ (cfg ns) (target ns) (readonly)
       ⍝ ⍵ ←→ source fs folder
-          ⎕ML←1
-          ⍺←⍬
-          ns←⍵ getSpace ⍺
+          c t ro←⍺
+          ns←t getSpace ⍵
           x←ns getProps ⍵
           d f←{(↓1 2∘.=⊣/⍵)/¨⊂⊢/⍵}ls ⍵
-          ~0∊⍴x←ns powerFix⍣≡⊢f:∘∘∘
-          map←⍉⍪(⍕ns)⍵
-          0∊⍴d:map
-          map⍪⊃⍪/ns ∇¨d
+          c.map⍪←⍉⍪(⍕ns)⍵ ro
+          ~0∊⍴x←c ns ro powerFix⍣≡⊢f:∘∘∘
+          0∊⍴d:0
+          c ns ro∘∇¨d
+      }
+      ImportLib←{
+      ⍝ ⍺ ←→ (cfg ns)
+      ⍝ ⍵ ←→ lib item = filepath [target ns [readonly]]
+          0∊⍴⍵:0
+          w←⊂⍣(1=|≡⍵)⊢⍵
+          fp t ro←w,(≢w)↓'' '#' 1
+          ⍺ t ro Import fp
+      }
+      ImportLibs←{
+      ⍝ ⍵ ←→ (cfg ns)
+          0=⍵.⎕NC'libs':0
+          0∊⍴⍵.libs:0
+          ⍵ ImportLib¨⍵.libs
       }
       getProps←{
       ⍝ ⍺ ←→ target ns
       ⍝ ⍵ ←→ source fs folder
-          ⍺.⍎¨⊃read(⍵,'/ns.props')1
+          ~⎕NEXISTS⊢p←⍵,'/ns.props':0
+          ⍺.⍎¨⊃read p 1
       }
-      getSpace←{⎕IO←0
-          ⍵≡⍬:#
-          ns←fsdec 1⊃⎕NPARTS ⍺,'.'
-          ⍎((⍕⍵),'.',ns)⎕NS''
+      getSpace←{
+          0=10|⎕DR ⍺:⍎⍺ ⎕NS''
+          ns←fsdec 1⊃⎕NPARTS ⍵,'.'
+          ⍎((⍕⍺),'.',ns)⎕NS''
+      }
+      reload←{
+          ⍺←'./'
+          dirs←{1↓¨⍵⊂⍨⍵∊'/\'}'/',⍵
+          nsn←'#',⊃,/'.',¨fsdec¨¯1↓dirs
+          ns←⍎nsn ⎕NS''
+          ns fix ⍺,⍵
       }
       fix←{
      ⍝ ⍵ ←→ file path
-     ⍝ ⍺ ←→ target ns
-          ⎕ML←1
+     ⍝ ⍺ ←→ (cfg ns) (target ns) (readonly)
+          c t ro←⍺
           fn ext←1↓⎕NPARTS ⍵
           11::1
           name←fsdec fn
-          ext≡'.derv':0⊣⍺ fixDerv ⍵ name
+          ext≡'.derv':0⊣t fixDerv ⍵ name
           src←⊃read ⍵ 1
-          ext≡'.ason':0⊣name ⍺.{⍎⍺,'←⍵'}ason2a⊃src
+          ext≡'.ason':0⊣name t.{⍎⍺,'←⍵'}ason2a⊃src
           ext≢'.dyalog':0
-          ':'=⊃~∘' '⊃src:0⊣⍺.⎕FIX src
-          0⊣⍺.⎕FX src
+          fixname←t fixScript src
+          c.map⍪←fixname ⍵ ro
+          0
       }
-
       fixDerv←{
       ⍝ ⍺ ←→ target ns
       ⍝ ⍵ ←→ (source file)(name)
@@ -193,10 +263,16 @@
           (⍺.{(⎕FUNTIE t)⊢⎕FREAD 1,⍨t←⍵ ⎕FSTIE 0}file)⍺.{
               ⍎⍵,'←⍺⍺ ⋄ ⍵' ⋄ ⍺⍺}name
       }
-
+      fixScript←{
+      ⍝ ⍵ ←→ source
+      ⍝ ⍺ ←→ target ns
+          0::''
+          ':'=⊃~∘' '⊃⍵:⍕⍺.⎕FIX ⍵
+          (⍕⍺),'.',⍺.⎕FX ⍵
+      }
       powerFix←{
           0∊⍴⍵:⍵
-          r←⍺ fix¨⍵
+          r←⍺∘fix¨⍵
           ⍵/⍨~r∊0
       }
     :EndSection ⍝ Import
@@ -207,6 +283,7 @@
     ss←{16::0⋄⎕SRC ⍵}
     j2a←{⍺←⊢ ⋄ ⍺(7159⌶)⍵}
     a2j←{⍺←⊢ ⋄ ⍺(7160⌶)⍵}
+    jf jt←7161⌶¨0 1
 
     write←{(⊂⍺)⎕NPUT ⍵ 1}
     read←{⎕NGET ⍵}
@@ -216,7 +293,6 @@
       }
 
       ls←{
-          ⎕ML←1
     ⍝ ⍵ ←→ filepath
     ⍝ ⍺ ←→ recurse flag
           ⍺←0
@@ -226,12 +302,12 @@
           r⍪⊃⍪/⍺ ∇¨f/⊢/r
       }
 
-      fsenc←{⎕IO←0
+      fsenc←{
           0=n←2⊥⍵∊⎕A:⍵,'.0'
           ⍵,'.',(⎕D,⎕A)⌷⍨⊂16⊥⍣¯1⊢n
       }
 
-      fsdec←{⎕IO←0 ⋄ ⎕ML←1
+      fsdec←{
           '.'≡⊃⍵:''
           n b←0 1 cc¨0 1↓¨1↓⎕NPARTS ⍵
           0∊⍴b:⍵
@@ -262,14 +338,15 @@
       }
 
       ason2a←{
-          dec←{⎕ML←1
+          dec←{
               9=⎕NC'⍵':ns ⍵
+              t←10|⎕DR ⍵
               (0∊⍴⍴⍵)∧0=≡⍵:⍵
-              (1=⍴⍴⍵)∧(1=≡⍵)∧0=10|⎕DR ⍵:⍬⍴⍵
+              (1=⍴⍴⍵)∧(1=≡⍵)∧0=t:⍬⍴⍵
               r←⊃⍵ ⋄ s←r↑1↓⍵
               w←(1+r)↓⍵
               v←s⍴⊃⍣(0=10|⎕DR⊃w)⊢w
-              2>|≡v:v
+              6≠t:v
               ∇¨v
           }
           ns←{
